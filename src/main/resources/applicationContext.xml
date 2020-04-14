@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       					   http://www.springframework.org/schema/beans/spring-beans.xsd
+       					   http://www.springframework.org/schema/tx
+       					   http://www.springframework.org/schema/tx/spring-tx.xsd
+       					   http://www.springframework.org/schema/aop
+       					   http://www.springframework.org/schema/aop/spring-aop.xsd
+       					   http://www.springframework.org/schema/context
+       					   http://www.springframework.org/schema/context/spring-context.xsd">
+
+    <!--spring整合mybatis-->
+
+   <!--配置连接池-->
+    <!--1.加载db.properties文件-->
+    <context:property-placeholder location="classpath:db.properties" system-properties-mode="NEVER"></context:property-placeholder>
+
+
+    <!--2.配置druid连接池对象-->
+    <bean id="myDataSource" class="com.alibaba.druid.pool.DruidDataSource">
+        <property name="driverClassName" value="${datasource.connection.driver_class}"></property>
+        <property name="url" value="${datasource.connection.url}"></property>
+        <property name="username" value="${datasource.connection.username}"></property>
+        <property name="password" value="${datasource.connection.password}"></property>
+     </bean>
+
+
+    <!--3.配置sqlSessionFactory-->
+    <bean id="mySqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+        <!--A.关联连接池-->
+        <property name="dataSource" ref="myDataSource"></property>
+        <!--B.MyBatis配置文件-->
+        <property name="configurationProperties">
+            <value>
+                lazyLoadingEnabled=true
+                aggressiveLazyLoading=false
+                lazyLoadTriggerMethods=clone
+            </value>
+        </property>
+        <!--C.配置为哪个包中的类起别名-->
+        <property name="typeAliasesPackage" value="com.sise.bean"></property>
+        <!--D.关联Mapper映射文件-->
+        <property name="mapperLocations" value="classpath:mapper/*Mapper.xml"></property>
+      <!--  &lt;!&ndash; E.引入插件 -->
+        <property name="plugins">
+            <array>
+                <!-- mybatis分页插件 -->
+                <bean class="com.github.pagehelper.PageInterceptor">
+                    <property name="properties">
+                        <!--
+                        helperDialect:连接数据库的类型
+                         -->
+                        <value>
+                            helperDialect=mysql
+                        </value>
+                    </property>
+                </bean>
+            </array>
+        </property>
+
+    </bean>
+
+
+    <!--自动扫描service,mapper包-->
+    <context:component-scan base-package="com.sise.service,com.sise.mapper"></context:component-scan>
+
+    <!--自动扫描mapper中的bean-->
+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+        <property name="basePackage" value="com.sise.mapper"></property>
+    </bean>
+
+
+    <!--4.配置MapperFactoryBean，spring帮我们创建Mapper的代理对象-->
+    <bean id="userMapper" class="org.mybatis.spring.mapper.MapperFactoryBean">
+        <property name="sqlSessionFactory" ref="mySqlSessionFactory"></property>
+        <property name="mapperInterface" value="com.sise.mapper.UserMapper"></property>
+    </bean>
+
+
+    <!--创建service对象-->
+    <bean id="userService" class="com.sise.service.UserServiceImpl">
+        <property name="userMapper" ref="userMapper"></property>
+    </bean>
+
+
+
+<!--配置事务管理器-->
+    <bean id="txManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="myDataSource"></property>
+    </bean>
+<!--TX注解解析器-->
+<tx:annotation-driven transaction-manager="txManager"></tx:annotation-driven>
+
+
+</beans>
